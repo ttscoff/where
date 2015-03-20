@@ -1,6 +1,6 @@
 #!/bin/bash
 source $(dirname $BASH_SOURCE)/common.bash
-# where by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
+# where 1.0.0 by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
 
 #### Description
 # For people who spread bash functions and aliases across multiple sourced
@@ -8,18 +8,23 @@ source $(dirname $BASH_SOURCE)/common.bash
 
 #### Installation
 #
-## Option 1: add the following to your .bash_profile before any
+## Option 1: Hook source
+#
+# This option will hook the Bash default `source` command and index shell
+# scripts whenenver they're sourced from another file.
+#
+# Add the following to your .bash_profile before any
 # source commands are run:
 #
 #   export WHERE_HOOK_SOURCE=true
 #   source /path/to/_where.bash
 #
+#  If using this option, see the WHERE_EXPIRATION configuration option.
+#
 ## Option 2:
 # 1. Source _where.sh in your .bash_profile prior to sourcing other files
 #
 #     source /path/to/_where.bash
-#
-#  If using this option, see the WHERE_EXPIRATION configuration option.
 #
 # 2. Add the following to the bottom of specific files to be indexed:
 #
@@ -101,8 +106,6 @@ source $(dirname $BASH_SOURCE)/common.bash
 #
 #   export WHERE_EXPIRATION=3600
 #
-# To never automatically index and only update manually, set it to
-# a very high number (10000000000).
 #### End
 DEBUG=false
 ## Initialization
@@ -110,7 +113,7 @@ DEBUG=false
 [[ -z $WHERE_FUNCTIONS_FROM_DB ]] && export WHERE_FUNCTIONS_FROM_DB="$HOME/.where_functions"
 
 _debug() {
-  $DEBUG && __color_out "%purple%$*"
+  $DEBUG && __color_out "%b_white%where: %purple%$*"
 }
 
 _where_updated() {
@@ -118,13 +121,19 @@ _where_updated() {
 }
 
 # Check the last index date, only update based on WHERE_EXPIRATION
-_where_check_expired() {
+_where_db_fresh() {
   if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || $(( $(cat "$WHERE_FUNCTIONS_FROM_DB"|wc -l)<=1 )) == 1 || -z $WHERE_EXPIRATION || $WHERE_EXPIRATION == 0 ]]; then
     _debug "no database, no expiration set, or expiration 0"
     export WHERE_DB_EXPIRED=true
     return 1
   fi
   local last_update=$(_where_updated)
+  if [[ $last_update == "" ]]; then
+    _debug "No timestamp in index"
+    export WHERE_DB_EXPIRED=true
+    return 1
+  fi
+
   _debug "last update: `date -r $last_update`"
   _debug "time since update: $(( $(date '+%s')-$last_update ))"
   if [ $(( $(date '+%s')-$last_update )) -ge $WHERE_EXPIRATION ]; then
@@ -138,12 +147,28 @@ _where_check_expired() {
 }
 
 _where_reset() {
-  __color_out "%b_white%where: %b_red%Resetting function index"
-  date '+%s' > $WHERE_FUNCTIONS_FROM_DB
+  if [[ $1 == "hard" ]]; then
+    __color_out "%b_white%where: %b_red%Clearing function index"
+    echo -n > "$WHERE_FUNCTIONS_FROM_DB"
+  else
+    __color_out "%b_white%where: %b_red%Resetting function index"
+    local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
+    trap "rm -f -- '$dbtmp'" EXIT
+    awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
+    mv "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+  fi
+}
+
+_where_set_update() {
+  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
+  trap "rm -f -- '$dbtmp'" EXIT
+  date '+%s' > "$dbtmp"
+  awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" >> "$dbtmp"
+  mv "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
 }
 
 # If this is the first time _where has been sourced in this session, expire the db
-_where_check_expired || _where_reset
+_where_db_fresh || _where_reset
 
 # hook source builtin to index source bash files
 source() {
@@ -186,7 +211,7 @@ _where_from() {
   touch $WHERE_FUNCTIONS_FROM_DB
   >&2 __color_out -n "\033[K%white%Indexing %red%$1...\r"
   # create a temp file and clean on exit
-  dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
+  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
   trap "rm -f -- '$dbtmp'" EXIT
 
   IFS=$'\n' cat "$srcfile" | awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' | while read f
@@ -211,6 +236,7 @@ _where_from() {
 
   rm -f -- "$dbtmp"
   >&2 echo -ne "\033[K"
+  _where_set_update
 }
 
 # Filter to ouput columnar "where" query results, in color if supported
