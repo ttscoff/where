@@ -9,6 +9,8 @@ files and then can't track down where they defined them
 
 ## Installation
 
+Place both _where.bash and common.bash in the same folder in your $PATH.
+
 ### Option 1: Hook `source`
 
 This option will hook the Bash default `source` command and index shell scripts whenenver they're sourced from another file. 
@@ -16,9 +18,10 @@ This option will hook the Bash default `source` command and index shell scripts 
 Add the following to your .bash_profile before any source commands are run:
 
     export WHERE_HOOK_SOURCE=true
+    export WHERE_EXPIRATION=25200 # once a week
     source /path/to/_where.bash
 
-If you choose this option, see **Database refresh throttling** below, and implement the `WHERE_EXPIRATION` variable.
+If you choose this option, see **Database refresh throttling** below.
 
 ### Option 2: Curated indexing
 
