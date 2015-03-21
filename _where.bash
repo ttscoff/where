@@ -309,7 +309,6 @@ ENDOPTIONSHELP
 
   if $fuzzy || $apropos; then
     if [[ $(grep -Ec $needle $WHERE_FUNCTIONS_FROM_DB) > 0 ]]; then
-      echo "grep -E $needle $WHERE_FUNCTIONS_FROM_DB"
       grep -E $needle $WHERE_FUNCTIONS_FROM_DB | _where_results_color
       return 0
     fi
@@ -413,3 +412,4 @@ source() {
 
 # Add functions from self to index
 _where_from $BASH_SOURCE
+_where_from $(dirname $BASH_SOURCE)/common.bash
