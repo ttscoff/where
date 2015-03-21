@@ -1,6 +1,6 @@
 #!/bin/bash
 source $(dirname $BASH_SOURCE)/common.bash
-# where 1.0.2 by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
+# where 1.0.0 by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
 
 #### Description
 # For people who spread bash functions and aliases across multiple sourced
@@ -111,6 +111,8 @@ DEBUG=false
 ## Initialization
 # If no WHERE_FUNCTIONS_FROM_DB env var is set, use default
 [[ -z $WHERE_FUNCTIONS_FROM_DB ]] && export WHERE_FUNCTIONS_FROM_DB="$HOME/.where_functions"
+
+touch $WHERE_FUNCTIONS_FROM_DB
 
 _debug() {
   $DEBUG && __color_out "%b_white%where: %purple%$*"
@@ -390,9 +392,6 @@ _where_add() {
 alias where?="where -k"
 alias where*="where -a"
 
-# Add functions from self to index
-_where_from $BASH_SOURCE
-
 # hook source builtin to index source bash files
 source() {
   if [[ -z $WHERE_HOOK_SOURCE || $WHERE_HOOK_SOURCE == false || $WHERE_DB_EXPIRED == false ]]; then
@@ -411,3 +410,6 @@ source() {
     done
   fi
 }
+
+# Add functions from self to index
+_where_from $BASH_SOURCE
