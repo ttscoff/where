@@ -170,31 +170,12 @@ _where_set_update() {
 # If this is the first time _where has been sourced in this session, expire the db
 _where_db_fresh || _where_reset
 
-# hook source builtin to index source bash files
-source() {
-  if [[ -z $WHERE_HOOK_SOURCE || $WHERE_HOOK_SOURCE == false || $WHERE_DB_EXPIRED == false ]]; then
-    for f in $@; do
-      builtin source $f
-    done
-  else
-    for f in $@; do
-      builtin source $f
-
-      if [[ $f =~ \.(ba)?sh$ && $(grep -cE "^_where_from \$BASH_SOURCE" $f) == 0 ]]; then
-        for f in $@; do
-          _where_from $f
-        done
-      fi
-    done
-  fi
-}
-
 # Convert a string into a fuzzy-match regular expression for _where
 # Separates each character and adds ".*" after, removing spaces
 # @param 1: (Required) string to convert
 _where_to_regex ()
 {
-    _regex_escape "$*" | sed -E 's/([[:alnum:]]) */\1.*/g'
+    _regex_escape "$*" | sed -E 's/([[:alnum:]]) */\1[^:]*/g'
 }
 
 # "where" database function
@@ -309,9 +290,9 @@ ENDOPTIONSHELP
   shift $((OPTIND-1))
 
   if $fuzzy; then
-    needle=".*$(_where_to_regex $1)[^:]*:"
+    needle="^[^:]*$(_where_to_regex $1)[^:]*:"
   elif $apropos; then
-    needle=".*$1[^:]*:"
+    needle="^[^:]*$1[^:]*:"
   else
     cmd_type=$(builtin type -t $1)
     if [[ $cmd_type != "function" && $cmd_type != "alias" ]]; then
@@ -326,6 +307,7 @@ ENDOPTIONSHELP
 
   if $fuzzy || $apropos; then
     if [[ $(grep -Ec $needle $WHERE_FUNCTIONS_FROM_DB) > 0 ]]; then
+      echo "grep -E $needle $WHERE_FUNCTIONS_FROM_DB"
       grep -E $needle $WHERE_FUNCTIONS_FROM_DB | _where_results_color
       return 0
     fi
@@ -410,3 +392,22 @@ alias where*="where -a"
 
 # Add functions from self to index
 _where_from $BASH_SOURCE
+
+# hook source builtin to index source bash files
+source() {
+  if [[ -z $WHERE_HOOK_SOURCE || $WHERE_HOOK_SOURCE == false || $WHERE_DB_EXPIRED == false ]]; then
+    for f in $@; do
+      builtin source $f
+    done
+  else
+    for f in $@; do
+      builtin source $f
+
+      if [[ $f =~ \.(ba)?sh$ && $(grep -cE "^_where_from \$BASH_SOURCE" $f) == 0 ]]; then
+        for f in $@; do
+          _where_from $f
+        done
+      fi
+    done
+  fi
+}
