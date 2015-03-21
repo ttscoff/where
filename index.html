@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Where by ttscoff</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Where</h1>
+        <p>A remedy for function forgetfulness</p>
+        <p class="view"><a href="https://github.com/ttscoff/where">View the Project on GitHub <small>ttscoff/where</small></a></p>
+        <ul>
+          <li><a href="https://github.com/ttscoff/where/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/ttscoff/where/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/ttscoff/where">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="where" class="anchor" href="#where" aria-hidden="true"><span class="octicon octicon-link"></span></a>where</h1>
+
+<p>Brett Terpstra 2015, WTF license <a href="http://wtflicense.com/">http://wtflicense.com/</a></p>
+
+<h2>
+<a id="description" class="anchor" href="#description" aria-hidden="true"><span class="octicon octicon-link"></span></a>Description</h2>
+
+<p>For people who spread bash functions and aliases across multiple sourced
+files and then can't track down where they defined them</p>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Place both _where.bash and common.bash in the same folder in your $PATH.</p>
+
+<h3>
+<a id="option-1-hook-source" class="anchor" href="#option-1-hook-source" aria-hidden="true"><span class="octicon octicon-link"></span></a>Option 1: Hook <code>source</code>
+</h3>
+
+<p>This option will hook the Bash default <code>source</code> command and index shell scripts whenenver they're sourced from another file. </p>
+
+<p>Add the following to your .bash_profile before any source commands are run:</p>
+
+<pre><code>export WHERE_HOOK_SOURCE=true
+export WHERE_EXPIRATION=25200 # once a week
+source /path/to/_where.bash
+</code></pre>
+
+<p>If you choose this option, see <strong>Database refresh throttling</strong> below.</p>
+
+<h3>
+<a id="option-2-curated-indexing" class="anchor" href="#option-2-curated-indexing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Option 2: Curated indexing</h3>
+
+<ol>
+<li>
+<p>Source _where.sh in your .bash_profile prior to sourcing other files</p>
+
+<pre><code>source /path/to/_where.bash
+</code></pre>
+</li>
+<li>
+<p>Add the following to the bottom of specific files to be indexed:</p>
+
+<pre><code>_where_from $BASH_SOURCE
+</code></pre>
+</li>
+</ol>
+
+<p>Indexing every file you source can slow down login, so option 2 may be ideal.</p>
+
+<p>You can add the necessary line to every file in a folder and subfolders
+using the <code>_where_add</code> function:</p>
+
+<pre><code>$ _where_add ~/scripts{,/**}/*.{,ba}sh
+</code></pre>
+
+<p>Remove the lines using the _where_clean function:</p>
+
+<pre><code>$ _where_clean ~/scripts{,/**}/*.{,ba}sh
+</code></pre>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<pre><code>where [-kav] [function_name|search_pattern]
+</code></pre>
+
+<p>Once the database is built, you can use the <code>where</code> command to find your
+functions. Running <code>where</code> with no arguments will output a list of all
+registered plugins and aliases.</p>
+
+<p>Add an argument to filter for a specific function or alias. By default
+only exact matches will return. If an exact match is found, just the
+file path of the originating script will be returned.</p>
+
+<h3>
+<a id="options" class="anchor" href="#options" aria-hidden="true"><span class="octicon octicon-link"></span></a>Options</h3>
+
+<pre><code>-k   Show all functions and aliases containing filter text
+-a   Show all functions and aliases fuzzy matched
+-v   Verbose output
+-n   Suppress line number in paths
+-E   Edit result
+-h   Show this screen
+</code></pre>
+
+<p>The -k switch turns on "apropos" mode, which lets you find any function
+containing the filter string in its name.</p>
+
+<p>The -a switch takes "apropos" a step further, using the filter argument
+as a fuzzy search string. It will match any functions/arguments containing
+the characters in the search string in sequence, but they do not need
+to be contiguous.</p>
+
+<p>If -a is specified, -k is ignored in the arguments.</p>
+
+<p>-E causes $EDITOR to be opened with the path to the file containing
+the searched function. -E does not work with -k or -a.</p>
+
+<h3>
+<a id="aliases" class="anchor" href="#aliases" aria-hidden="true"><span class="octicon octicon-link"></span></a>Aliases</h3>
+
+<p><code>where?</code> is equivalent to <code>where -k</code>
+<code>where*</code> is equivalent to <code>where -a</code></p>
+
+<h2>
+<a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configuration</h2>
+
+<h3>
+<a id="database-location" class="anchor" href="#database-location" aria-hidden="true"><span class="octicon octicon-link"></span></a>Database location</h3>
+
+<p>You can customize the location of the text file <code>where</code> uses with the
+environment variable <code>WHERE_FUNCTIONS_FROM_DB</code>. Set it before sourcing
+the script in <code>~/.bash_profile</code>:</p>
+
+<pre><code>export WHERE_FUNCTIONS_FROM_DB=/new/path/filename
+</code></pre>
+
+<h3>
+<a id="source-hook" class="anchor" href="#source-hook" aria-hidden="true"><span class="octicon octicon-link"></span></a>Source hook</h3>
+
+<p>To enable <code>where</code> to automatically index any file sourced in your
+configuration, set the <code>WHERE_HOOK_SOURCE</code> variable to true before
+sourcing <code>_where.bash</code> in <code>~/.bash_profile</code>:</p>
+
+<pre><code>export WHERE_HOOK_SOURCE=true
+</code></pre>
+
+<h3>
+<a id="database-refresh-throttling" class="anchor" href="#database-refresh-throttling" aria-hidden="true"><span class="octicon octicon-link"></span></a>Database refresh throttling</h3>
+
+<p>Set an expiration threshhold on the database with <code>WHERE_EXPIRATION</code>.
+The threshhold is in seconds, where one day is 3600. If <code>where</code> is
+initialized within the thresshold since last update, it won't index
+the files again.</p>
+
+<pre><code>export WHERE_EXPIRATION=3600
+</code></pre>
+
+<p>You can force a database refresh with <code>_where_reset</code> on the command line. This will clear your database and set an update marker for the current time.</p>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/ttscoff">ttscoff</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-34296025-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
