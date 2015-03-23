@@ -18,7 +18,7 @@ This option will hook the Bash default `source` command and index shell scripts 
 Add the following to your .bash_profile before any source commands are run:
 
     export WHERE_HOOK_SOURCE=true
-    export WHERE_EXPIRATION=25200 # once a week
+    export WHERE_EXPIRATION=86400 # once a day
     source /path/to/_where.bash
 
 If you choose this option, see **Database refresh throttling** below.
