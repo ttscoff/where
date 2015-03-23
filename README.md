@@ -103,9 +103,9 @@ sourcing `_where.bash` in `~/.bash_profile`:
 
 ### Database refresh throttling
 
-Set an expiration threshhold on the database with `WHERE_EXPIRATION`.
-The threshhold is in seconds, where one hour is 3600. If `where` is
-initialized within the thresshold since last update, it won't index
+Set an expiration threshold on the database with `WHERE_EXPIRATION`.
+The threshold is in seconds, where one hour is 3600. If `where` is
+initialized within the threshold since last update, it won't index
 the files again.
 
     export WHERE_EXPIRATION=3600
