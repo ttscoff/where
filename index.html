@@ -159,9 +159,9 @@ sourcing <code>_where.bash</code> in <code>~/.bash_profile</code>:</p>
 <h3>
 <a id="database-refresh-throttling" class="anchor" href="#database-refresh-throttling" aria-hidden="true"><span class="octicon octicon-link"></span></a>Database refresh throttling</h3>
 
-<p>Set an expiration threshhold on the database with <code>WHERE_EXPIRATION</code>.
-The threshhold is in seconds, where one hour is 3600. If <code>where</code> is
-initialized within the thresshold since last update, it won't index
+<p>Set an expiration threshold on the database with <code>WHERE_EXPIRATION</code>.
+The threshold is in seconds, where one hour is 3600. If <code>where</code> is
+initialized within the threshold since last update, it won't index
 the files again.</p>
 
 <pre><code>export WHERE_EXPIRATION=3600
