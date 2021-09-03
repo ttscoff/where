@@ -1,6 +1,6 @@
 #!/bin/bash
 source $(dirname $BASH_SOURCE)/common.bash
-# where 1.0.5 by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
+# where 1.0.5 by Brett Terpstra 2015, WTF license <http://www.wtfpl.net/>
 
 #### Description
 # For people who spread bash functions and aliases across multiple sourced

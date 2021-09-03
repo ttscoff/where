@@ -1,6 +1,6 @@
 # where 
 
-Brett Terpstra 2015, WTF license <http://wtflicense.com/>
+Brett Terpstra 2015, WTF license <http://www.wtfpl.net/>
 
 ## Description
 
