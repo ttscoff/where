@@ -392,18 +392,21 @@ alias where?="where -k"
 alias where*="where -a"
 
 # hook source builtin to index source bash files
-source() {
-  builtin source $@
-  [[ $WHERE_HOOK_SOURCE == true && $WHERE_DB_EXPIRED == true ]] || return 0
+if [[ ${WHERE_HOOK_SOURCE:-false} == true ]]
+then
+  function source() {
+    builtin source $@
+    [[ ${WHERE_HOOK_SOURCE:-} == true && $WHERE_DB_EXPIRED == true ]] || return 0
 
-  for f in $@; do
-    if [[ $f =~ \.(ba)?sh$ && $(grep -cE "^_where_from \$BASH_SOURCE" $f) == 0 ]]; then
-      for f in $@; do
-        _where_from $f
-      done
-    fi
-  done
-}
+    for f in $@; do
+      if [[ $f =~ \.(ba)?sh$ && $(grep -cE "^_where_from \$BASH_SOURCE" $f) == 0 ]]; then
+        for f in $@; do
+          _where_from $f
+        done
+      fi
+    done
+  }
+fi
 
 # Add functions from self to index
 _where_from $BASH_SOURCE
