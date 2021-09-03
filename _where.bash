@@ -157,7 +157,7 @@ _where_reset() {
     local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
     trap "rm -f -- '$dbtmp'" EXIT
     awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
-    mv "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+    mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
   fi
 }
 
@@ -166,7 +166,7 @@ _where_set_update() {
   trap "rm -f -- '$dbtmp'" EXIT
   date '+%s' > "$dbtmp"
   awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" >> "$dbtmp"
-  mv "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+  mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
 }
 
 # If this is the first time _where has been sourced in this session, expire the db
@@ -369,7 +369,7 @@ _where_clean() {
     t=$(mktemp -t where_clean.XXXXXX)
     trap "rm -f -- '$t'" EXIT
     grep -v "^_where_from \$BASH_SOURCE" $f > $t
-    mv "$t" "$f"
+    mv -f "$t" "$f"
     trap - EXIT
   done
   >&2 echo -ne "\033[K"
