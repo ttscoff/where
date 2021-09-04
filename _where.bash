@@ -154,19 +154,21 @@ _where_reset() {
     echo -n > "$WHERE_FUNCTIONS_FROM_DB"
   else
     __color_out "%b_white%where: %b_red%Resetting function index"
-    local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
-    trap "rm -f -- '$dbtmp'" EXIT
+    local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+    trap "rm -f -- '$dbtmp'" RETURN
     awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
     mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+    trap - RETURN
   fi
 }
 
 _where_set_update() {
-  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
-  trap "rm -f -- '$dbtmp'" EXIT
+  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+  trap "rm -f -- '$dbtmp'" RETURN
   date '+%s' > "$dbtmp"
   awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" >> "$dbtmp"
   mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+  trap - RETURN
 }
 
 # If this is the first time _where has been sourced in this session, expire the db
@@ -193,9 +195,9 @@ _where_from() {
   [[ ! -e $srcfile ]] && return 1
   touch $WHERE_FUNCTIONS_FROM_DB
   >&2 __color_out -n "\033[K%white%Indexing %red%$1...\r"
-  # create a temp file and clean on exit
-  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
-  trap "rm -f -- '$dbtmp'" EXIT
+  # create a temp file and clean on return
+  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+  trap "rm -f -- '$dbtmp'" RETURN
 
   IFS=$'\n' cat "$srcfile" | awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' | while read f
   do
@@ -218,6 +220,7 @@ _where_from() {
   done
 
   rm -f -- "$dbtmp"
+  trap - RETURN
   >&2 echo -ne "\033[K"
   _where_set_update
 }
@@ -367,10 +370,10 @@ _where_clean() {
     >&2 __color_out -n "%b_red%Cleaning %b_white%$f...\r"
     # safely create a temp file
     t=$(mktemp -t where_clean.XXXXXX)
-    trap "rm -f -- '$t'" EXIT
+    trap "rm -f -- '$t'" RETURN
     grep -v "^_where_from \$BASH_SOURCE" $f > $t
     mv -f "$t" "$f"
-    trap - EXIT
+    trap - RETURN
   done
   >&2 echo -ne "\033[K"
 }
