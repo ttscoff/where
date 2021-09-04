@@ -192,7 +192,7 @@ _where_from() {
   dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
   trap "rm -f -- '$dbtmp'" RETURN
 
-  IFS=$'\n' cat "$srcfile" | awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' | while read f
+  IFS=$'\n' awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' < "$srcfile" | while read f
   do
     declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
 
@@ -202,7 +202,7 @@ _where_from() {
     sort -u "$dbtmp" -o "$WHERE_FUNCTIONS_FROM_DB"
   done
 
-  IFS=$'\n' cat "$srcfile" | awk '/^alias/{gsub(/(^\s*alias |=.*$)/,"");print $1":"NR}' | while read f
+  IFS=$'\n' awk '/^alias/{gsub(/(^\s*alias |=.*$)/,"");print $1":"NR}' < "$srcfile" | while read f
   do
     declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
 
@@ -265,7 +265,7 @@ ENDOPTIONSHELP
 
   if [ $# == 0 ]; then
     awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" | _where_results_color
-    # cat "$WHERE_FUNCTIONS_FROM_DB" | _where_results_color
+    # _where_results_color < "$WHERE_FUNCTIONS_FROM_DB"
     return 0
   fi
 
