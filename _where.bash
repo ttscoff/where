@@ -118,7 +118,7 @@ _where_updated() {
 
 # Check the last index date, only update based on WHERE_EXPIRATION
 _where_db_fresh() {
-  if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || $(( $(wc -l < "$WHERE_FUNCTIONS_FROM_DB")<=1 )) == 1 || ${WHERE_EXPIRATION:-0} == 0 ]]; then
+  if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || ! -s "$WHERE_FUNCTIONS_FROM_DB" || ${WHERE_EXPIRATION:-0} == 0 ]]; then
     _where_debug "no database, no expiration set, or expiration 0"
     WHERE_DB_EXPIRED=true
     return 1
