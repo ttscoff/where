@@ -387,32 +387,37 @@ _where_add() {
 # If no WHERE_FUNCTIONS_FROM_DB env var is set, use default
 : ${WHERE_FUNCTIONS_FROM_DB:="$HOME/.where_functions"}
 
-touch $WHERE_FUNCTIONS_FROM_DB
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]
+then # We are being sourced.
 
-# Aliases for apropos and fuzzy search
-alias where?="where -k"
-alias where*="where -a"
+	# Aliases for apropos and fuzzy search
+	alias where?="where -k"
+	alias where*="where -a"
 
-# hook source builtin to index source bash files
-if [[ ${WHERE_HOOK_SOURCE:-false} == true ]]
-then
-  function source() {
-    builtin source $@
-    [[ ${WHERE_HOOK_SOURCE:-} == true && $WHERE_DB_EXPIRED == true ]] || return 0
+	# hook source builtin to index source bash files
+	if [[ ${WHERE_HOOK_SOURCE:-false} == true ]]
+	then
+		function source() {
+			builtin source $@
+			[[ ${WHERE_HOOK_SOURCE:-} == true && $WHERE_DB_EXPIRED == true ]] || return 0
 
-    for f in $@; do
-      if [[ $f =~ \.(ba)?sh$ && $(grep -cE "^_where_from \$BASH_SOURCE" $f) == 0 ]]; then
-        for f in $@; do
-          _where_from $f
-        done
-      fi
-    done
-  }
+			for f in $@; do
+				if [[ $f =~ \.(ba)?sh$ && $(grep -cE "^_where_from \$BASH_SOURCE" $f) == 0 ]]; then
+					for f in $@; do
+						_where_from $f
+					done
+				fi
+			done
+		}
+	fi
+
+	# If this is the first time _where has been sourced in this session, expire the db
+	_where_db_fresh || _where_reset
+
+	# Add functions from self to index
+	_where_from "${BASH_SOURCE}"
+	_where_from "${BASH_SOURCE%/*}/common.bash"
+else # We are the executing script.
+
+	where "$@"
 fi
-
-# If this is the first time _where has been sourced in this session, expire the db
-_where_db_fresh || _where_reset
-
-# Add functions from self to index
-_where_from $BASH_SOURCE
-_where_from "${BASH_SOURCE%/*}/common.bash"
