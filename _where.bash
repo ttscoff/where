@@ -193,7 +193,7 @@ _where_from() {
   trap "rm -f -- '$dbtmp'" RETURN
   cp "$WHERE_FUNCTIONS_FROM_DB" "$dbtmp"
 
-  IFS=$'\n' awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' < "$srcfile" | while read f
+  IFS=$'\n' awk '/^(function )?[_[:alnum:]-]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' < "$srcfile" | while read f
   do
     declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
 
