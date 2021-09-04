@@ -108,11 +108,6 @@ source $(dirname $BASH_SOURCE)/common.bash
 #
 #### End
 DEBUG=false
-## Initialization
-# If no WHERE_FUNCTIONS_FROM_DB env var is set, use default
-[[ -z $WHERE_FUNCTIONS_FROM_DB ]] && export WHERE_FUNCTIONS_FROM_DB="$HOME/.where_functions"
-
-touch $WHERE_FUNCTIONS_FROM_DB
 
 _debug() {
   $DEBUG && __color_out "%b_white%where: %purple%$*"
@@ -172,9 +167,6 @@ _where_set_update() {
   mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
   trap - RETURN
 }
-
-# If this is the first time _where has been sourced in this session, expire the db
-_where_db_fresh || _where_reset
 
 # Convert a string into a fuzzy-match regular expression for _where
 # Separates each character and adds ".*" after, removing spaces
@@ -392,6 +384,12 @@ _where_add() {
   >&2 echo -ne "\033[K"
 }
 
+## Initialization
+# If no WHERE_FUNCTIONS_FROM_DB env var is set, use default
+[[ -z $WHERE_FUNCTIONS_FROM_DB ]] && export WHERE_FUNCTIONS_FROM_DB="$HOME/.where_functions"
+
+touch $WHERE_FUNCTIONS_FROM_DB
+
 # Aliases for apropos and fuzzy search
 alias where?="where -k"
 alias where*="where -a"
@@ -412,6 +410,9 @@ then
     done
   }
 fi
+
+# If this is the first time _where has been sourced in this session, expire the db
+_where_db_fresh || _where_reset
 
 # Add functions from self to index
 _where_from $BASH_SOURCE
