@@ -1,5 +1,5 @@
 #!/bin/bash
-source $(dirname $BASH_SOURCE)/common.bash
+source "${BASH_SOURCE%/*}/common.bash"
 # where 1.0.5 by Brett Terpstra 2015, WTF license <http://www.wtfpl.net/>
 
 #### Description
@@ -107,10 +107,9 @@ source $(dirname $BASH_SOURCE)/common.bash
 #   export WHERE_EXPIRATION=3600
 #
 #### End
-DEBUG=false
 
 _debug() {
-  $DEBUG && __color_out "%b_white%where: %purple%$*"
+  "${DEBUG:-false}" && __color_out "%b_white%where: %purple%$*"
 }
 
 _where_updated() {
@@ -119,38 +118,38 @@ _where_updated() {
 
 # Check the last index date, only update based on WHERE_EXPIRATION
 _where_db_fresh() {
-  if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || $(( $(cat "$WHERE_FUNCTIONS_FROM_DB"|wc -l)<=1 )) == 1 || -z $WHERE_EXPIRATION || $WHERE_EXPIRATION == 0 ]]; then
+  if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || $(( $(wc -l < "$WHERE_FUNCTIONS_FROM_DB")<=1 )) == 1 || ${WHERE_EXPIRATION:-0} == 0 ]]; then
     _debug "no database, no expiration set, or expiration 0"
-    export WHERE_DB_EXPIRED=true
+    WHERE_DB_EXPIRED=true
     return 1
   fi
   local last_update=$(_where_updated)
   if [[ $last_update == "" ]]; then
     _debug "No timestamp in index"
-    export WHERE_DB_EXPIRED=true
+    WHERE_DB_EXPIRED=true
     return 1
   fi
 
   _debug "last update: `date -r $last_update`"
   _debug "time since update: $(( $(date '+%s')-$last_update ))"
-  if [ $(( $(date '+%s')-$last_update )) -ge $WHERE_EXPIRATION ]; then
-    _debug "%red%Expired (threshhold $WHERE_EXPIRATION)"
-    export WHERE_DB_EXPIRED=true
+  if [ $(( $(date '+%s')-$last_update )) -ge ${WHERE_EXPIRATION:-0} ]; then
+    _debug "%red%Expired (threshhold ${WHERE_EXPIRATION:-})"
+    WHERE_DB_EXPIRED=true
     return 1
   fi
-  export WHERE_DB_EXPIRED=false
+  WHERE_DB_EXPIRED=false
   _debug "%green%database fresh"
   return 0
 }
 
 _where_reset() {
   local dbtmp
-  if [[ $1 == "hard" ]]; then
+  if [[ ${1:-soft} == "hard" ]]; then
     __color_out "%b_white%where: %b_red%Clearing function index"
-    echo -n > "$WHERE_FUNCTIONS_FROM_DB"
+    : > "$WHERE_FUNCTIONS_FROM_DB"
   else
     __color_out "%b_white%where: %b_red%Resetting function index"
-    dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+    dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
     trap "rm -f -- '$dbtmp'" RETURN
     awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
     mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
@@ -160,7 +159,7 @@ _where_reset() {
 
 _where_set_update() {
   local dbtmp
-  dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+  dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
   trap "rm -f -- '$dbtmp'" RETURN
   date '+%s' > "$dbtmp"
   awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" >> "$dbtmp"
@@ -184,13 +183,13 @@ _where_to_regex ()
 # @param 1: (Required) single file path to parse and index
 _where_from() {
   local needle dbtmp
-  local srcfile=$1
+  local srcfile=${1:-}
 
   [[ ! -e $srcfile ]] && return 1
-  touch $WHERE_FUNCTIONS_FROM_DB
+  touch "$WHERE_FUNCTIONS_FROM_DB"
   >&2 __color_out -n "\033[K%white%Indexing %red%$1...\r"
   # create a temp file and clean on return
-  dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+  dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
   trap "rm -f -- '$dbtmp'" RETURN
 
   IFS=$'\n' cat "$srcfile" | awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' | while read f
@@ -271,7 +270,7 @@ ENDOPTIONSHELP
   fi
 
   DEBUG=false
-  OPTIND=1
+  local OPTIND=1
   while getopts "kahdvEn" opt; do
     case $opt in
       h) __color_out "$helpoptions"; return;;
@@ -386,7 +385,7 @@ _where_add() {
 
 ## Initialization
 # If no WHERE_FUNCTIONS_FROM_DB env var is set, use default
-[[ -z $WHERE_FUNCTIONS_FROM_DB ]] && export WHERE_FUNCTIONS_FROM_DB="$HOME/.where_functions"
+: ${WHERE_FUNCTIONS_FROM_DB:="$HOME/.where_functions"}
 
 touch $WHERE_FUNCTIONS_FROM_DB
 
@@ -416,4 +415,4 @@ _where_db_fresh || _where_reset
 
 # Add functions from self to index
 _where_from $BASH_SOURCE
-_where_from $(dirname $BASH_SOURCE)/common.bash
+_where_from "${BASH_SOURCE%/*}/common.bash"
