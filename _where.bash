@@ -191,15 +191,17 @@ _where_from() {
   # create a temp file and clean on return
   dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
   trap "rm -f -- '$dbtmp'" RETURN
+  cp "$WHERE_FUNCTIONS_FROM_DB" "$dbtmp"
 
   IFS=$'\n' awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' < "$srcfile" | while read f
   do
     declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
 
     needle=$(_regex_escape ${farr[0]})
-    grep -vE "^$needle:" "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
-    echo "${farr[0]}:function:$srcfile:${farr[1]}" >> "$dbtmp"
-    sort -u "$dbtmp" -o "$WHERE_FUNCTIONS_FROM_DB"
+	{
+		echo "${farr[0]}:function:$srcfile:${farr[1]}"
+		grep -vE "^$needle:" < "$dbtmp"
+	} | sort -o "$dbtmp"
   done
 
   IFS=$'\n' awk '/^alias/{gsub(/(^\s*alias |=.*$)/,"");print $1":"NR}' < "$srcfile" | while read f
@@ -207,11 +209,13 @@ _where_from() {
     declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
 
     needle=$(_regex_escape ${farr[0]})
-    grep -vE "^$needle:" "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
-    echo "${farr[0]}:alias:$srcfile:${farr[1]}" >> "$dbtmp"
-    sort -u "$dbtmp" -o "$WHERE_FUNCTIONS_FROM_DB"
+	{
+		echo "${farr[0]}:alias:$srcfile:${farr[1]}"
+		grep -vE "^$needle:" < "$dbtmp"
+	} | sort -o "$dbtmp"
   done
 
+  mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
   rm -f -- "$dbtmp"
   trap - RETURN
   >&2 echo -ne "\033[K"
