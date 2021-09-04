@@ -385,10 +385,12 @@ _where_add() {
 
 ## Initialization
 # If no WHERE_FUNCTIONS_FROM_DB env var is set, use default
-: ${WHERE_FUNCTIONS_FROM_DB:="$HOME/.where_functions"}
+: "${WHERE_FUNCTIONS_FROM_DB:=${XDG_CACHE_HOME:-$HOME/.where_functions}${XDG_CACHE_HOME:+/where/functionsdb}}"
 
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]
 then # We are being sourced.
+
+	mkdir -p "${WHERE_FUNCTIONS_FROM_DB%/*}"
 
 	# Aliases for apropos and fuzzy search
 	alias where?="where -k"
