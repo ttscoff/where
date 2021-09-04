@@ -108,7 +108,7 @@ source "${BASH_SOURCE%/*}/common.bash"
 #
 #### End
 
-_debug() {
+_where_debug() {
   "${DEBUG:-false}" && __color_out "%b_white%where: %purple%$*"
 }
 
@@ -119,26 +119,26 @@ _where_updated() {
 # Check the last index date, only update based on WHERE_EXPIRATION
 _where_db_fresh() {
   if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || $(( $(wc -l < "$WHERE_FUNCTIONS_FROM_DB")<=1 )) == 1 || ${WHERE_EXPIRATION:-0} == 0 ]]; then
-    _debug "no database, no expiration set, or expiration 0"
+    _where_debug "no database, no expiration set, or expiration 0"
     WHERE_DB_EXPIRED=true
     return 1
   fi
   local last_update=$(_where_updated)
   if [[ $last_update == "" ]]; then
-    _debug "No timestamp in index"
+    _where_debug "No timestamp in index"
     WHERE_DB_EXPIRED=true
     return 1
   fi
 
-  _debug "last update: `date -r $last_update`"
-  _debug "time since update: $(( $(date '+%s')-$last_update ))"
+  _where_debug "last update: `date -r $last_update`"
+  _where_debug "time since update: $(( $(date '+%s')-$last_update ))"
   if [ $(( $(date '+%s')-$last_update )) -ge ${WHERE_EXPIRATION:-0} ]; then
-    _debug "%red%Expired (threshhold ${WHERE_EXPIRATION:-})"
+    _where_debug "%red%Expired (threshhold ${WHERE_EXPIRATION:-})"
     WHERE_DB_EXPIRED=true
     return 1
   fi
   WHERE_DB_EXPIRED=false
-  _debug "%green%database fresh"
+  _where_debug "%green%database fresh"
   return 0
 }
 
@@ -301,7 +301,7 @@ ENDOPTIONSHELP
     fi
   fi
 
-  _debug "Searching for '$needle'"
+  _where_debug "Searching for '$needle'"
 
   if $fuzzy || $apropos; then
     if [[ $(grep -Ec $needle $WHERE_FUNCTIONS_FROM_DB) > 0 ]]; then
