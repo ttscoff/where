@@ -343,8 +343,11 @@ _where_fallback() {
     __color_out "%red%No match found for %b_white%$1"
     return 1
   elif [[ $cmd_type == "function" ]]; then
-    __color_out "%red%Function %b_white%$1 %red%not found in where's index"
-    return 1
+    #__color_out "%red%Function %b_white%$1 %red%not found in where's index"
+	pre="%yellow%Function: %b_white%"
+	shopt -s extdebug
+	res="$(declare -F "$1")"
+	shopt -u extdebug
   elif [[ $cmd_type == "file" ]]; then
     pre="%yellow%File: %b_white%"
     res=$(builtin type -p $1 2> /dev/null)
