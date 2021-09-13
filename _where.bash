@@ -175,6 +175,43 @@ _where_to_regex ()
     _regex_escape "$*" | sed -E 's/([[:alnum:]]) */\1[^:]*/g'
 }
 
+function _where_from_add()
+{
+	local dbtmp needle
+	local -a farr
+	local type="${1:-thing}"
+    # create a temp file and clean on return
+	dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
+	trap "rm -f -- '$dbtmp' && trap - RETURN" RETURN
+	cp -f "$WHERE_FUNCTIONS_FROM_DB" "$dbtmp"
+
+	while read f
+	do
+		farr=( $(sed -E 's/:/ /g' <<< $f) ) || continue
+
+		needle=$(_regex_escape ${farr[0]:?}) 2>/dev/null || continue
+		{
+			echo "${farr[0]}:${type}:$srcfile:${farr[1]}"
+			grep -vE "^$needle:" < "$dbtmp"
+		} | sort -o "$dbtmp"
+	done
+
+	mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+	return # Return trap handles $dbtmp cleanup
+}
+
+function _where_from_add_function()
+{
+	local srcfile="${1:?}"
+	IFS=$'\n' awk '/^(function )?[_[:alnum:]-]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' < "${srcfile:=/dev/null}" | _where_from_add function
+}
+
+function _where_from_add_alias()
+{
+	local srcfile="${1:?}"
+	IFS=$'\n' awk '/^alias/{gsub(/(^\s*alias |=.*$)/,"");print $1":"NR}' < "${srcfile:=/dev/null}" | _where_from_add alias
+}
+
 # "where" database function
 # Parses for function and alias definitions to add to text list
 # Existing definitions with same name are replaced
@@ -182,42 +219,15 @@ _where_to_regex ()
 #   func_or_alias_name:(function|alias):path_to_source
 # @param 1: (Required) single file path to parse and index
 _where_from() {
-  local needle dbtmp
   local srcfile=${1:-}
 
   [[ ! -e $srcfile ]] && return 1
   touch "$WHERE_FUNCTIONS_FROM_DB"
   >&2 __color_out -n "\033[K%white%Indexing %red%$1...\r"
-  # create a temp file and clean on return
-  dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
-  trap "rm -f -- '$dbtmp'" RETURN
-  cp "$WHERE_FUNCTIONS_FROM_DB" "$dbtmp"
 
-  IFS=$'\n' awk '/^(function )?[_[:alnum:]-]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' < "$srcfile" | while read f
-  do
-    declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
+  _where_from_add_function "${srcfile}"
+  _where_from_add_alias "${srcfile}"
 
-    needle=$(_regex_escape ${farr[0]})
-	{
-		echo "${farr[0]}:function:$srcfile:${farr[1]}"
-		grep -vE "^$needle:" < "$dbtmp"
-	} | sort -o "$dbtmp"
-  done
-
-  IFS=$'\n' awk '/^alias/{gsub(/(^\s*alias |=.*$)/,"");print $1":"NR}' < "$srcfile" | while read f
-  do
-    declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
-
-    needle=$(_regex_escape ${farr[0]})
-	{
-		echo "${farr[0]}:alias:$srcfile:${farr[1]}"
-		grep -vE "^$needle:" < "$dbtmp"
-	} | sort -o "$dbtmp"
-  done
-
-  mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
-  rm -f -- "$dbtmp"
-  trap - RETURN
   >&2 echo -ne "\033[K"
   _where_set_update
 }
