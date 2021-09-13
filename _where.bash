@@ -313,7 +313,8 @@ ENDOPTIONSHELP
       return 0
     fi
   else
-    if [[ $(grep -Ec "^$needle:" $WHERE_FUNCTIONS_FROM_DB) > 0 ]]; then
+    if grep -Eq "^$needle:" $WHERE_FUNCTIONS_FROM_DB
+	then
       res=$(grep -E "^$needle:" $WHERE_FUNCTIONS_FROM_DB)
       declare -a res_array=( $(echo $res|sed -E 's/:/ /g') )
       # __color_out "%yellow%${res_array[1]} %b_white%${res_array[0]} %yellow%defined in: %b_white%${res_array[2]}"
