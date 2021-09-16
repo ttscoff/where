@@ -1,6 +1,6 @@
 #!/bin/bash
 source $(dirname $BASH_SOURCE)/common.bash
-# where 1.0.4 by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
+# where 1.0.5 by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
 
 #### Description
 # For people who spread bash functions and aliases across multiple sourced
@@ -392,23 +392,21 @@ alias where?="where -k"
 alias where*="where -a"
 
 # hook source builtin to index source bash files
-source() {
-  if [[ -z $WHERE_HOOK_SOURCE || $WHERE_HOOK_SOURCE == false || $WHERE_DB_EXPIRED == false ]]; then
-    for f in $@; do
-      builtin source $f
-    done
-  else
-    for f in $@; do
-      builtin source $f
+if [[ ${WHERE_HOOK_SOURCE:-false} == true ]]
+then
+  function source() {
+    builtin source $@
+    [[ ${WHERE_HOOK_SOURCE:-} == true && $WHERE_DB_EXPIRED == true ]] || return 0
 
+    for f in $@; do
       if [[ $f =~ \.(ba)?sh$ && $(grep -cE "^_where_from \$BASH_SOURCE" $f) == 0 ]]; then
         for f in $@; do
           _where_from $f
         done
       fi
     done
-  fi
-}
+  }
+fi
 
 # Add functions from self to index
 _where_from $BASH_SOURCE
