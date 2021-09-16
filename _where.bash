@@ -1,6 +1,6 @@
 #!/bin/bash
 source $(dirname $BASH_SOURCE)/common.bash
-# where 1.0.5 by Brett Terpstra 2015, WTF license <http://wtflicense.com/>
+# where 1.0.5 by Brett Terpstra 2015, WTF license <http://www.wtfpl.net/>
 
 #### Description
 # For people who spread bash functions and aliases across multiple sourced
@@ -149,24 +149,28 @@ _where_db_fresh() {
 }
 
 _where_reset() {
+  local dbtmp
   if [[ $1 == "hard" ]]; then
     __color_out "%b_white%where: %b_red%Clearing function index"
     echo -n > "$WHERE_FUNCTIONS_FROM_DB"
   else
     __color_out "%b_white%where: %b_red%Resetting function index"
-    local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
-    trap "rm -f -- '$dbtmp'" EXIT
+    dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+    trap "rm -f -- '$dbtmp'" RETURN
     awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
-    mv "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+    mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+    trap - RETURN
   fi
 }
 
 _where_set_update() {
-  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
-  trap "rm -f -- '$dbtmp'" EXIT
+  local dbtmp
+  dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+  trap "rm -f -- '$dbtmp'" RETURN
   date '+%s' > "$dbtmp"
   awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" >> "$dbtmp"
-  mv "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+  mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+  trap - RETURN
 }
 
 # If this is the first time _where has been sourced in this session, expire the db
@@ -187,15 +191,15 @@ _where_to_regex ()
 #   func_or_alias_name:(function|alias):path_to_source
 # @param 1: (Required) single file path to parse and index
 _where_from() {
-  local needle
+  local needle dbtmp
   local srcfile=$1
 
   [[ ! -e $srcfile ]] && return 1
   touch $WHERE_FUNCTIONS_FROM_DB
   >&2 __color_out -n "\033[K%white%Indexing %red%$1...\r"
-  # create a temp file and clean on exit
-  local dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || exit 1
-  trap "rm -f -- '$dbtmp'" EXIT
+  # create a temp file and clean on return
+  dbtmp=$(mktemp -t WHERE_DB.XXXXXX) || return
+  trap "rm -f -- '$dbtmp'" RETURN
 
   IFS=$'\n' cat "$srcfile" | awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' | while read f
   do
@@ -218,6 +222,7 @@ _where_from() {
   done
 
   rm -f -- "$dbtmp"
+  trap - RETURN
   >&2 echo -ne "\033[K"
   _where_set_update
 }
@@ -367,10 +372,10 @@ _where_clean() {
     >&2 __color_out -n "%b_red%Cleaning %b_white%$f...\r"
     # safely create a temp file
     t=$(mktemp -t where_clean.XXXXXX)
-    trap "rm -f -- '$t'" EXIT
+    trap "rm -f -- '$t'" RETURN
     grep -v "^_where_from \$BASH_SOURCE" $f > $t
-    mv "$t" "$f"
-    trap - EXIT
+    mv -f "$t" "$f"
+    trap - RETURN
   done
   >&2 echo -ne "\033[K"
 }
