@@ -118,7 +118,7 @@ _where_updated() {
 
 # Check the last index date, only update based on WHERE_EXPIRATION
 _where_db_fresh() {
-  if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || $(( $(wc -l < "$WHERE_FUNCTIONS_FROM_DB")<=1 )) == 1 || ${WHERE_EXPIRATION:-0} == 0 ]]; then
+  if [[ ! -e $WHERE_FUNCTIONS_FROM_DB || ! -s "$WHERE_FUNCTIONS_FROM_DB" || ${WHERE_EXPIRATION:-0} == 0 ]]; then
     _where_debug "no database, no expiration set, or expiration 0"
     WHERE_DB_EXPIRED=true
     return 1
@@ -175,6 +175,43 @@ _where_to_regex ()
     _regex_escape "$*" | sed -E 's/([[:alnum:]]) */\1[^:]*/g'
 }
 
+function _where_from_add()
+{
+	local dbtmp needle
+	local -a farr
+	local type="${1:-thing}"
+    # create a temp file and clean on return
+	dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
+	trap "rm -f -- '$dbtmp' && trap - RETURN" RETURN
+	cp -f "$WHERE_FUNCTIONS_FROM_DB" "$dbtmp"
+
+	while read f
+	do
+		farr=( $(sed -E 's/:/ /g' <<< $f) ) || continue
+
+		needle=$(_regex_escape ${farr[0]:?}) 2>/dev/null || continue
+		{
+			echo "${farr[0]}:${type}:$srcfile:${farr[1]}"
+			grep -vE "^$needle:" < "$dbtmp"
+		} | sort -o "$dbtmp"
+	done
+
+	mv -f "$dbtmp" "$WHERE_FUNCTIONS_FROM_DB"
+	return # Return trap handles $dbtmp cleanup
+}
+
+function _where_from_add_function()
+{
+	local srcfile="${1:?}"
+	IFS=$'\n' awk '/^(function )?[_[:alnum:]-]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' < "${srcfile:=/dev/null}" | _where_from_add function
+}
+
+function _where_from_add_alias()
+{
+	local srcfile="${1:?}"
+	IFS=$'\n' awk '/^alias/{gsub(/(^\s*alias |=.*$)/,"");print $1":"NR}' < "${srcfile:=/dev/null}" | _where_from_add alias
+}
+
 # "where" database function
 # Parses for function and alias definitions to add to text list
 # Existing definitions with same name are replaced
@@ -182,38 +219,15 @@ _where_to_regex ()
 #   func_or_alias_name:(function|alias):path_to_source
 # @param 1: (Required) single file path to parse and index
 _where_from() {
-  local needle dbtmp
   local srcfile=${1:-}
 
   [[ ! -e $srcfile ]] && return 1
   touch "$WHERE_FUNCTIONS_FROM_DB"
   >&2 __color_out -n "\033[K%white%Indexing %red%$1...\r"
-  # create a temp file and clean on return
-  dbtmp="$(mktemp -t WHERE_DB.XXXXXX)" || return
-  trap "rm -f -- '$dbtmp'" RETURN
 
-  IFS=$'\n' cat "$srcfile" | awk '/^(function )?[_[:alnum:]]+ *\(\)/{gsub(/(function | *\(.+)/,"");print $1":"NR}' | while read f
-  do
-    declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
+  _where_from_add_function "${srcfile}"
+  _where_from_add_alias "${srcfile}"
 
-    needle=$(_regex_escape ${farr[0]})
-    grep -vE "^$needle:" "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
-    echo "${farr[0]}:function:$srcfile:${farr[1]}" >> "$dbtmp"
-    sort -u "$dbtmp" -o "$WHERE_FUNCTIONS_FROM_DB"
-  done
-
-  IFS=$'\n' cat "$srcfile" | awk '/^alias/{gsub(/(^\s*alias |=.*$)/,"");print $1":"NR}' | while read f
-  do
-    declare -a farr=( $(echo $f|sed -E 's/:/ /g') )
-
-    needle=$(_regex_escape ${farr[0]})
-    grep -vE "^$needle:" "$WHERE_FUNCTIONS_FROM_DB" > "$dbtmp"
-    echo "${farr[0]}:alias:$srcfile:${farr[1]}" >> "$dbtmp"
-    sort -u "$dbtmp" -o "$WHERE_FUNCTIONS_FROM_DB"
-  done
-
-  rm -f -- "$dbtmp"
-  trap - RETURN
   >&2 echo -ne "\033[K"
   _where_set_update
 }
@@ -265,7 +279,7 @@ ENDOPTIONSHELP
 
   if [ $# == 0 ]; then
     awk '!/^[0-9]+$/{print}' "$WHERE_FUNCTIONS_FROM_DB" | _where_results_color
-    # cat "$WHERE_FUNCTIONS_FROM_DB" | _where_results_color
+    # _where_results_color < "$WHERE_FUNCTIONS_FROM_DB"
     return 0
   fi
 
@@ -309,7 +323,8 @@ ENDOPTIONSHELP
       return 0
     fi
   else
-    if [[ $(grep -Ec "^$needle:" $WHERE_FUNCTIONS_FROM_DB) > 0 ]]; then
+    if grep -Eq "^$needle:" $WHERE_FUNCTIONS_FROM_DB
+	then
       res=$(grep -E "^$needle:" $WHERE_FUNCTIONS_FROM_DB)
       declare -a res_array=( $(echo $res|sed -E 's/:/ /g') )
       # __color_out "%yellow%${res_array[1]} %b_white%${res_array[0]} %yellow%defined in: %b_white%${res_array[2]}"
@@ -339,8 +354,11 @@ _where_fallback() {
     __color_out "%red%No match found for %b_white%$1"
     return 1
   elif [[ $cmd_type == "function" ]]; then
-    __color_out "%red%Function %b_white%$1 %red%not found in where's index"
-    return 1
+    #__color_out "%red%Function %b_white%$1 %red%not found in where's index"
+	pre="%yellow%Function: %b_white%"
+	shopt -s extdebug
+	res="$(declare -F "$1")"
+	shopt -u extdebug
   elif [[ $cmd_type == "file" ]]; then
     pre="%yellow%File: %b_white%"
     res=$(builtin type -p $1 2> /dev/null)
